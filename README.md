@@ -5,4 +5,4 @@ By using Keycloak you will be able to manage all your users from Keycloak and im
 
 # I have provide all documents for "Single sign on with OpenID Connect protocol"
 
-# Note: please follow & maintain all documents sequently
+# Note: please follow & maintain all documents sequently.
