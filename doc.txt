@@ -1,0 +1,156 @@
+
+Using Keycloak as the OpenIDC Identity Provider (to Login) to Zimbra:
+=====================================================================
+cd /opt/zimbra/extensions-extra/openidconsumer
+cp -r zm-openid-consumer-store-*.jar /opt/zimbra/lib/ext/openidconsumer
+cp -r openid4java-1.0.0.jar guice-2.0.jar /opt/zimbra/jetty/common/lib
+cp formredirection.jsp /opt/zimbra/jetty/webapps/zimbra/public
+
+
+- Configure allowed OpenID Provider URLs for the domain:
+show all domain: 
+zmprov gad
+
+zmprov md your-domain +zimbraOpenidConsumerAllowedOPEndpointURL "https://your-keycloak-server"
+zmcontrol restart
+
+
+
+Zimbra Single Sign On (Zm SSO)
+==============================
+Ref: https://github.com/iwayvietnam/zm-sso/blob/master/docs/keycloak.md
+
+Config Keycloak User Federation with Zimbra LDAP:
+==================================================
+Sign in to Keycloak Administration Console as an admin by visiting url https://your-keycloak-server/auth/admin from your web browser.
+On the Main menu, select your realm & click Configure > User Federation
+Click Add Provider... -> ldap. Fill in Add user federation provider form like that
+
+console display name: zimbra-ldap
+priority: 0
+import user: on
+edit mood: read only
+sync registration: off
+vendor: other
+Username LDAP Attribute: uid
+RDN LDAP Attribute: uid
+UUID LDAP Attribute: zimbraId
+User Object Classes: * or zimbraAccount
+Connection Url: ldap://your-zimbra:389
+UserDN: ou=people,dc=mail,dc=net,dc=bd
+Custom User LDAP Filter: 
+Search Scope: One Level
+Bind type: simple
+BindDN: uid=zimbra,cn=admins,cn=zimbra
+Bind Credential: **********
+Click Test authenticaion button to check ldap configuration
+Click Save button to add ldap user federation
+Click Synchronize all users button to synchronize zimbra users to Keycloak users
+On the Main menu, click Manage > Users to list users from ldap
+
+
+Note: 
+You can find your LDAP bind credentials by running the following commands as user zimbra on your Zimbra server:
+
+source ~/bin/zmshutil 
+zmsetvars 
+echo $zimbra_ldap_password
+echo $zimbra_ldap_userdn
+ldapsearch -x -H $ldap_master_url -D $zimbra_ldap_userdn -w $zimbra_ldap_password "mail=*"
+The "ldapsearch" command will allow you to find your base DN as well. Usually something like ou=people,dc=example,dc=com.
+
+or 
+zmlocalconfig -s | grep 'ldap_' | egrep 'password|url'
+
+Building Java extension:
+------------------------
+Ref: https://github.com/iwayvietnam/zm-sso
+
+Requirement
+JDK 11 or newer.
+Apache Maven 3.5 or newer for Maven build
+
+Clone code from git repository
+==============================
+mkdir -p ~/projects/zimbra
+cd ~/projects/zimbra
+git clone https://github.com/iwayvietnam/zm-sso.git
+
+Build jar file by using Maven
+===============================
+cd ~/projects/zimbra/zm-sso
+mvn clean package
+
+
+Install jar extension on zimbra server:
+=======================================
+Copy projects folder to zimbra server:
+
+cd /tmp/projects/zimbra/zm-sso
+mkdir -p /opt/zimbra/lib/ext/zm-sso
+
+cp target/*.jar /opt/zimbra/lib/ext/zm-sso
+cp target/dependencies/*.jar /opt/zimbra/lib/ext-common
+cp conf/zm.sso.properties /opt/zimbra/conf
+
+su zimbra
+zmmailboxdctl restart or /opt/zimbra/bin/zmmailboxdctl restart
+
+
+Single sign on with OpenID Connect protocol:
+============================================
+Ref: https://github.com/iwayvietnam/zm-sso/blob/master/docs/keycloak.md
+
+Create OpenID Connect client for Zimbra on Keycloak:
+----------------------------------------------------
+On Keycloak:
+
+Sign in to Keycloak Administration Console as an admin by visiting url https://your-keycloak-server/auth/admin from your web browser.
+On the Main menu, create a realm for zimbra (Zimbra) click Configure > Clients
+Click Create button, fill Client ID with your-client-id.
+
+Select Access Type with confidential, fill Valid Redirect URIs with https://your-zimbra-hostname/*, fill Backchannel Logout URL with https://your-zimbra-hostname/service/extension/oidc/callback?client_name=OidcClient&logoutendpoint=true, 
+choose Backchannel Logout Session Required with On. 
+Click Save button to update settings.
+Click Credentials tab. Select Access Type with Client Authenticator, click Regenerate Secret button to regenerate client secret
+Config Zimbra SSO
+
+On Zimbra Server:
+
+Using a text editor to open /opt/zimbra/conf/zm.sso.properties file.
+Set sso.defaultClient to OidcClient
+Set sso.callbackUrl to https://your-zimbra-hostname/service/extension/sso/callback
+Set oidc.callbackUrl to https://your-zimbra-hostname/service/extension/oidc/callback
+Set sso.postLogoutURL to https://your-zimbra-hostname/
+
+# OpenID Connect client configuration
+oidc.discoveryUri = https://keycloak-server/realms/zimbra/.well-known/openid-configuration
+oidc.id = zimbra-sso
+oidc.secret = **********
+oidc.scope = openid email profile
+oidc.preferredJwsAlgorithm = RS256
+oidc.useNonce = true
+oidc.withState = true
+oidc.clientAuthenticationMethod = client_secret_basic
+Restart mailbox under zimbra user: zmmailboxdctl restart
+Notes: You can get Client Secret from Credentials tab on OpenID Connect client that you configured
+
+Testing:
+-------
+Testing single sign on by visiting url https://your-zimbra-hostname/service/extension/oidc/login from your web browser.
+Testing logout & single logout (SLO) by visiting url https://your-zimbra-hostname/service/extension/sso/logout from your web browser.
+
+Replace login and logout urls
+==============================
+for global, apply on all domain:
+Execute following commands with the zimbra user:
+zmprov mcf zimbraWebClientLoginURL https://your-zimbra-hostname/service/extension/oidc/login
+zmprov mcf zimbraWebClientLogoutURL https://your-zimbra-hostname/service/extension/sso/logout
+zmmailboxdctl restart
+
+
+for single domain:
+
+zmprov md zimbraWebClientLoginURL https://your-zimbra-hostname/service/extension/oidc/login
+zmprov md zimbraWebClientLogoutURL https://your-zimbra-hostname/service/extension/sso/logout
+zmmailboxdctl restart
