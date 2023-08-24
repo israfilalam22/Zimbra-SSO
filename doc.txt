@@ -155,7 +155,7 @@ zmprov md zimbraWebClientLoginURL https://your-zimbra-hostname/service/extension
 zmprov md zimbraWebClientLogoutURL https://your-zimbra-hostname/service/extension/sso/logout
 zmmailboxdctl restart
 
-
+=============================================================================================THE END=================================================================================================
 
 check login/logout url:
 =======================
