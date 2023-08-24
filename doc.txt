@@ -150,7 +150,7 @@ zmmailboxdctl restart
 
 
 for single domain:
-
+==================
 zmprov md zimbraWebClientLoginURL https://your-zimbra-hostname/service/extension/oidc/login
 zmprov md zimbraWebClientLogoutURL https://your-zimbra-hostname/service/extension/sso/logout
 zmmailboxdctl restart
@@ -158,13 +158,17 @@ zmmailboxdctl restart
 
 
 check login/logout url:
+=======================
 zmprov gd ba-systems.com zimbraWebClientLoginURL
 zmprov gd ba-systems.com zimbraWebClientLogoutURL
 
 Set Zimbra default zimbraWebClientLogin/logoutURL:
+=====================================================
 for global:
+----------
 zmprov mcf zimbraWebClientLoginURL ""
 zmprov mcf zimbraWebClientLogoutURL ""
 for single domain:
+------------------
 zmprov md yourdomain.com zimbraWebClientLoginURL ""
 zmprov md yourdomain.com zimbraWebClientLogoutURL ""
