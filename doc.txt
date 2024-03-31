@@ -159,8 +159,8 @@ zmmailboxdctl restart
 
 check login/logout url:
 =======================
-zmprov gd ba-systems.com zimbraWebClientLoginURL
-zmprov gd ba-systems.com zimbraWebClientLogoutURL
+zmprov gd yourdomain.com zimbraWebClientLoginURL
+zmprov gd yourdomain.com zimbraWebClientLogoutURL
 
 Set Zimbra default zimbraWebClientLogin/logoutURL:
 =====================================================
